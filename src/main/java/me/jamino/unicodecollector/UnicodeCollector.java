@@ -1,6 +1,7 @@
 package me.jamino.unicodecollector;
 
 import net.fabricmc.api.ModInitializer;
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.loader.api.FabricLoader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,17 +20,66 @@ public class UnicodeCollector implements ModInitializer {
     private static final List<String> collectedMessages = new ArrayList<>();
     private static final Path CONFIG_PATH = FabricLoader.getInstance().getConfigDir().resolve("unicodecollector");
     private static final Path LOG_PATH = CONFIG_PATH.resolve("logs");
+    private static final Path CHAT_LOG_PATH = CONFIG_PATH.resolve("chatlogs");
+    private static FileWriter currentChatLogWriter;
+    private static String currentChatLogFile;
 
     @Override
     public void onInitialize() {
         LOGGER.info("Unicode Collector initialized");
         try {
+            // Create all necessary directories
             CONFIG_PATH.toFile().mkdirs();
             LOG_PATH.toFile().mkdirs();
-            LOGGER.info("Unicode Collector log directory created at: " + LOG_PATH.toAbsolutePath());
+            CHAT_LOG_PATH.toFile().mkdirs();
+            LOGGER.info("Unicode Collector directories created at: " + CONFIG_PATH.toAbsolutePath());
+
+            // Register server events
+            registerServerEvents();
+
         } catch (Exception e) {
-            LOGGER.error("Failed to create log directory", e);
+            LOGGER.error("Failed to create directories", e);
         }
+    }
+
+    private void registerServerEvents() {
+        // Create new chat log file when joining a server
+        ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> {
+            try {
+                createNewChatLogFile();
+            } catch (IOException e) {
+                LOGGER.error("Failed to create new chat log file", e);
+            }
+        });
+
+        // Close the chat log file when disconnecting
+        ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> {
+            try {
+                if (currentChatLogWriter != null) {
+                    currentChatLogWriter.close();
+                    currentChatLogWriter = null;
+                }
+            } catch (IOException e) {
+                LOGGER.error("Failed to close chat log file", e);
+            }
+        });
+    }
+
+    private void createNewChatLogFile() throws IOException {
+        // Close existing writer if there is one
+        if (currentChatLogWriter != null) {
+            currentChatLogWriter.close();
+        }
+
+        // Create new log file with timestamp
+        String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss"));
+        currentChatLogFile = "chat_log_" + timestamp + ".txt";
+        File logFile = CHAT_LOG_PATH.resolve(currentChatLogFile).toFile();
+        currentChatLogWriter = new FileWriter(logFile, true);
+
+        // Write header to new chat log
+        currentChatLogWriter.write("=== Chat Log Started " + timestamp + " ===\n\n");
+        currentChatLogWriter.flush();
     }
 
     private static boolean isStandardCharacter(char c) {
@@ -51,17 +101,31 @@ public class UnicodeCollector implements ModInitializer {
     }
 
     public static void logUnicodeMessage(String message) {
-        // Only process messages that contain at least one non-standard character
+        // First, convert the message for the chat log
+        String convertedMessage = message;
+
+        // Always convert the full message for the chat log, including player names and other elements
+        convertedMessage = convertToSelective(message);
+
+        // Write to chat log if available
+        try {
+            if (currentChatLogWriter != null) {
+                String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("HH:mm:ss"));
+                currentChatLogWriter.write(String.format("[%s] %s\n", timestamp, convertedMessage));
+                currentChatLogWriter.flush();
+            }
+        } catch (IOException e) {
+            LOGGER.error("Failed to write to chat log", e);
+        }
+
+        // Only continue with detailed unicode logging if message contains non-standard characters
         boolean hasUnicode = message.chars().anyMatch(c -> !isStandardCharacter((char) c));
         if (!hasUnicode) {
             return;
         }
 
-        // Add message to collection
+        // Add message to collection for analysis
         collectedMessages.add(message);
-
-        // Create selectively escaped version
-        String escapedMessage = convertToSelective(message);
 
         // Log to console with detailed Unicode info
         StringBuilder unicodeInfo = new StringBuilder();
@@ -76,7 +140,7 @@ public class UnicodeCollector implements ModInitializer {
             }
         }
 
-        // Write to file
+        // Write to analysis log file
         try {
             String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss"));
             File logFile = LOG_PATH.resolve("unicode_log_" + timestamp + ".txt").toFile();
@@ -84,7 +148,7 @@ public class UnicodeCollector implements ModInitializer {
             try (FileWriter writer = new FileWriter(logFile, true)) {
                 writer.write("=== New Message with Special Characters ===\n");
                 writer.write("Raw message: " + message + "\n");
-                writer.write("Selectively Escaped: " + escapedMessage + "\n");
+                writer.write("Selectively Escaped: " + convertedMessage + "\n");
                 writer.write(unicodeInfo.toString());
                 writer.write("\n");
             }
