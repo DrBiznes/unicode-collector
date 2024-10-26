@@ -11,13 +11,10 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.List;
 
 public class UnicodeCollector implements ModInitializer {
     public static final String MOD_ID = "unicodecollector";
     public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
-    private static final List<String> collectedMessages = new ArrayList<>();
     private static final Path BASE_PATH = FabricLoader.getInstance().getGameDir().resolve("logs").resolve("unicodecollector");
     private static final Path ANALYSIS_PATH = BASE_PATH.resolve("analysis");
     private static final Path CHAT_LOG_PATH = BASE_PATH.resolve("chat");
@@ -101,11 +98,12 @@ public class UnicodeCollector implements ModInitializer {
     }
 
     public static void logUnicodeMessage(String message) {
-        // First, convert the message for the chat log
-        String convertedMessage = message;
+        if (message == null || message.isEmpty()) {
+            return;
+        }
 
-        // Always convert the full message for the chat log, including player names and other elements
-        convertedMessage = convertToSelective(message);
+        // Convert the message for logging
+        String convertedMessage = convertToSelective(message);
 
         // Write to chat log if available
         try {
@@ -118,14 +116,11 @@ public class UnicodeCollector implements ModInitializer {
             LOGGER.error("Failed to write to chat log", e);
         }
 
-        // Only continue with detailed unicode logging if message contains non-standard characters
+        // Only create analysis log if message contains non-standard characters
         boolean hasUnicode = message.chars().anyMatch(c -> !isStandardCharacter((char) c));
         if (!hasUnicode) {
             return;
         }
-
-        // Add message to collection for analysis
-        collectedMessages.add(message);
 
         // Log to console with detailed Unicode info
         StringBuilder unicodeInfo = new StringBuilder();
