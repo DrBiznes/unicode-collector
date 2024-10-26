@@ -24,7 +24,6 @@ public class UnicodeCollector implements ModInitializer {
     public void onInitialize() {
         LOGGER.info("Unicode Collector initialized");
         try {
-            // Create config and log directories
             CONFIG_PATH.toFile().mkdirs();
             LOG_PATH.toFile().mkdirs();
             LOGGER.info("Unicode Collector log directory created at: " + LOG_PATH.toAbsolutePath());
@@ -33,19 +32,48 @@ public class UnicodeCollector implements ModInitializer {
         }
     }
 
+    private static boolean isStandardCharacter(char c) {
+        // Check if character is a standard printable ASCII character (including space and basic punctuation)
+        return (c >= 32 && c <= 126);
+    }
+
+    private static String convertToSelective(String message) {
+        StringBuilder result = new StringBuilder();
+        for (int i = 0; i < message.length(); i++) {
+            char c = message.charAt(i);
+            if (isStandardCharacter(c)) {
+                result.append(c);
+            } else {
+                result.append(String.format("\\u%04x", (int) c));
+            }
+        }
+        return result.toString();
+    }
+
     public static void logUnicodeMessage(String message) {
+        // Only process messages that contain at least one non-standard character
+        boolean hasUnicode = message.chars().anyMatch(c -> !isStandardCharacter((char) c));
+        if (!hasUnicode) {
+            return;
+        }
+
         // Add message to collection
         collectedMessages.add(message);
 
+        // Create selectively escaped version
+        String escapedMessage = convertToSelective(message);
+
         // Log to console with detailed Unicode info
         StringBuilder unicodeInfo = new StringBuilder();
-        unicodeInfo.append("Message Unicode Analysis:\n");
+        unicodeInfo.append("Non-Standard Characters Analysis:\n");
         for (int i = 0; i < message.length(); i++) {
             char c = message.charAt(i);
-            String hex = String.format("\\u%04x", (int) c);
-            String charInfo = String.format("Position %d: Character '%c' (Unicode: %s)", i, c, hex);
-            unicodeInfo.append(charInfo).append("\n");
-            LOGGER.info(charInfo);
+            if (!isStandardCharacter(c)) {
+                String hex = String.format("\\u%04x", (int) c);
+                String charInfo = String.format("Position %d: Character '%c' (Unicode: %s)", i, c, hex);
+                unicodeInfo.append(charInfo).append("\n");
+                LOGGER.info(charInfo);
+            }
         }
 
         // Write to file
@@ -54,8 +82,9 @@ public class UnicodeCollector implements ModInitializer {
             File logFile = LOG_PATH.resolve("unicode_log_" + timestamp + ".txt").toFile();
 
             try (FileWriter writer = new FileWriter(logFile, true)) {
-                writer.write("=== New Message ===\n");
+                writer.write("=== New Message with Special Characters ===\n");
                 writer.write("Raw message: " + message + "\n");
+                writer.write("Selectively Escaped: " + escapedMessage + "\n");
                 writer.write(unicodeInfo.toString());
                 writer.write("\n");
             }
