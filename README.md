@@ -13,7 +13,7 @@ The mod creates two types of logs:
 ### Analysis Logs
 Detailed analysis of messages containing special characters:
 ```
-.minecraft/config/unicodecollector/logs/
+.minecraft/logs/unicodecollector/analysis/
 ```
 
 Each analysis log file is named: `unicode_log_YYYY-MM-DD_HH-mm-ss.txt`
@@ -21,7 +21,7 @@ Each analysis log file is named: `unicode_log_YYYY-MM-DD_HH-mm-ss.txt`
 ### Chat Logs
 Complete chat logs with Unicode characters converted to escaped format:
 ```
-.minecraft/config/unicodecollector/chatlogs/
+.minecraft/logs/unicodecollector/chat/
 ```
 
 Each chat log file is named: `chat_log_YYYY-MM-DD_HH-mm-ss.txt`
