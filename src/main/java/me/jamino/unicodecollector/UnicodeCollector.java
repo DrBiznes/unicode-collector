@@ -18,9 +18,9 @@ public class UnicodeCollector implements ModInitializer {
     public static final String MOD_ID = "unicodecollector";
     public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
     private static final List<String> collectedMessages = new ArrayList<>();
-    private static final Path CONFIG_PATH = FabricLoader.getInstance().getConfigDir().resolve("unicodecollector");
-    private static final Path LOG_PATH = CONFIG_PATH.resolve("logs");
-    private static final Path CHAT_LOG_PATH = CONFIG_PATH.resolve("chatlogs");
+    private static final Path BASE_PATH = FabricLoader.getInstance().getGameDir().resolve("logs").resolve("unicodecollector");
+    private static final Path ANALYSIS_PATH = BASE_PATH.resolve("analysis");
+    private static final Path CHAT_LOG_PATH = BASE_PATH.resolve("chat");
     private static FileWriter currentChatLogWriter;
     private static String currentChatLogFile;
 
@@ -29,10 +29,10 @@ public class UnicodeCollector implements ModInitializer {
         LOGGER.info("Unicode Collector initialized");
         try {
             // Create all necessary directories
-            CONFIG_PATH.toFile().mkdirs();
-            LOG_PATH.toFile().mkdirs();
+            BASE_PATH.toFile().mkdirs();
+            ANALYSIS_PATH.toFile().mkdirs();
             CHAT_LOG_PATH.toFile().mkdirs();
-            LOGGER.info("Unicode Collector directories created at: " + CONFIG_PATH.toAbsolutePath());
+            LOGGER.info("Unicode Collector directories created at: " + BASE_PATH.toAbsolutePath());
 
             // Register server events
             registerServerEvents();
@@ -143,7 +143,7 @@ public class UnicodeCollector implements ModInitializer {
         // Write to analysis log file
         try {
             String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss"));
-            File logFile = LOG_PATH.resolve("unicode_log_" + timestamp + ".txt").toFile();
+            File logFile = ANALYSIS_PATH.resolve("unicode_log_" + timestamp + ".txt").toFile();
 
             try (FileWriter writer = new FileWriter(logFile, true)) {
                 writer.write("=== New Message with Special Characters ===\n");
