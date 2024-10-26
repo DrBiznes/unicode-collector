@@ -1,4 +1,4 @@
-# Unicode Collector Mod
+# Unicode Collector
 
 A simple Minecraft mod for Fabric 1.21.1 that logs non-standard Unicode characters found in chat messages.
 
